@@ -11,8 +11,8 @@ DEFAULT_NODE_COLOR = '#01b28c'
 
 class Graph:
 
-    conn = sqlite3.connect('test.db')
-    cursor = conn.cursor()
+    conn = None
+    cursor = None
     graph = pydot.Dot(
         graph_type="digraph", 
         sep='+30,30', 
@@ -29,18 +29,25 @@ class Graph:
     edges = []
     clusters = dict()
     links_colors = dict()
+    package_filter = ''
 
-    def __init__(self):
+    def __init__(self, input_db_path, starting_cls, package_filter=''):
+
+        #Init database
+        self.conn = sqlite3.connect(input_db_path)
+        self.cursor = self.conn.cursor()
+
         #fetch packages
         self.cursor.execute('SELECT * FROM package')
         packages = self.cursor.fetchall()
+
+        self.package_filter = package_filter
         for package in packages:
-            if package[1].startswith('com.fernandocejas'):
+            if package[1].startswith(package_filter):
                 self.clusters[package[0]] = pydot.Cluster(str(package[0]), bgcolor='#cccccc', label=package[1])
 
         #fetch links
-        orig_cls_name = 'MainActivity'
-        c = self.cursor.execute(f'SELECT * FROM class where class_name = "{orig_cls_name}"')
+        c = self.cursor.execute(f'SELECT * FROM class where class_name = "{starting_cls}"')
         orig_cls = c.fetchone()
         assert orig_cls, 'origin class not found'
         orig_cls_id = orig_cls[0]
@@ -69,7 +76,7 @@ class Graph:
 
         #Select only the project classes
         print(package_result)
-        if not package_result  or not package_result[0].startswith('com.fernandocejas') :
+        if not package_result  or not package_result[0].startswith(self.package_filter) :
             return None, -1
         
         return pydot.Node(cls_id, label=cls_name, style="filled", fillcolor=color, group=package_id), package_id
@@ -176,7 +183,3 @@ class Graph:
             self.graph.add_edge(edge)
 
         self.graph.write('example1_graph.png',prog='dot', format='png')
-
-
-g = Graph()
-g.create_graph()
