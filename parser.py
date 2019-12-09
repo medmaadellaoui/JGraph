@@ -18,7 +18,7 @@ class Parser:
     def __parse_dir(self, path):
         assert os.path.isdir(path), f'{path} is not a directory'
         print(f'parsing directory {path}')
-        for (dirpath, dirnames, filenames) in os.walk(path):
+        for (dirpath, _, filenames) in os.walk(path):
             for filename in filenames:
                 if(filename.endswith('.java')) : self.parse(dirpath+'/'+filename)
                 
@@ -28,6 +28,7 @@ class Parser:
         #redirect if directory
         if(os.path.isdir(file_path)):
             self.__parse_dir(file_path)
+            self.conn.commit()
             return
 
         #extract the filename
@@ -40,6 +41,7 @@ class Parser:
             while line: 
                 self.save_line(line.rstrip().strip(';'), filename.split('.')[0], filename)
                 line = file.readline()
+        self.conn.commit()
 
 
     def save_line(self, line : str, jclass : str, path : str):
@@ -71,7 +73,7 @@ class Parser:
 
         if not(success) :
             self.__query(self.cursor, f'''
-                SELECT id FROM package WHERE package_name = {package_name}
+                SELECT id FROM package WHERE package_name = "{package_name}"
             ''')
             return self.cursor.fetchone()[0]
 
@@ -107,7 +109,7 @@ class Parser:
         ''')
         if not(success) :
             self.__query(self.cursor, f'''
-                SELECT id FROM class WHERE class_name = {jclass}
+                SELECT id FROM class WHERE class_name = "{jclass}"
             ''')
             return self.cursor.fetchone()[0]
         
@@ -138,21 +140,20 @@ class Parser:
         # the DROP TABLE commands
         try:
             cursor.execute(query)
-            self.conn.commit()
             return True
         except Exception as e:
-            #print(f'Command skipped:  {e} {query}')
+            print(f'Command skipped:  {e} {query}')
             return False
 
     def __query(self, cursor, query):
         try:
             return cursor.execute(query)
         except Exception as e:
-            #print(f'Command skipped:  {e} {query}')
+            print(f'Command skipped:  {e} {query}')
             return None
 
 parser = Parser()
-parser.parse('/home/hamada/projects/lab/carto/here/here-android-sdk-examples')
+parser.parse('/media/hamada/DATA1/projects/lab/opensrouce/JGraph/test/Android-CleanArchitecture')
 
 
 '''package Searches;
