@@ -1,0 +1,4 @@
+#Graphiz to draw the visual representation
+graphviz
+pydot
+matplotlib
