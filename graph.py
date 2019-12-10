@@ -6,7 +6,7 @@ import os
 import sqlite3
 import random
 
-MAX_NODE_LEVEL = -1
+DEFAULT_NODE_LEVEL = -1
 DEFAULT_NODE_COLOR = '#01b28c'
 
 class Graph:
@@ -30,12 +30,15 @@ class Graph:
     clusters = dict()
     links_colors = dict()
     package_filter = ''
+    max_levels=DEFAULT_NODE_LEVEL
 
-    def __init__(self, input_db_path, starting_cls, package_filter=''):
+    def __init__(self, input_db_path, starting_cls, package_filter='', max_levels=DEFAULT_NODE_LEVEL):
 
         #Init database
         self.conn = sqlite3.connect(input_db_path)
         self.cursor = self.conn.cursor()
+
+        self.max_levels
 
         #fetch packages
         self.cursor.execute('SELECT * FROM package')
@@ -136,7 +139,7 @@ class Graph:
         links = self.__fetch_direct_links(cls_id)
 
         #Check the deep
-        if(MAX_NODE_LEVEL >= 0 and level >= MAX_NODE_LEVEL):
+        if(self.max_levels >= 0 and level >= self.max_levels):
             return
         
         if links : 
