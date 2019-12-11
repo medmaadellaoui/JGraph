@@ -24,7 +24,9 @@ class Graph:
         splines=True, 
         diredgeconstraints=True,
         levelsgap=3, 
-        mode="hier"
+        mode="hier",
+        ratio="fill",
+        size="8.3,11.7!"
     )
     edges = []
     clusters = dict()
@@ -38,23 +40,37 @@ class Graph:
         self.conn = sqlite3.connect(input_db_path)
         self.cursor = self.conn.cursor()
 
-        self.max_levels
+        print(f'max levels of deep : {max_levels}')
+        self.max_levels = max_levels
 
         #fetch packages
         self.cursor.execute('SELECT * FROM package')
         packages = self.cursor.fetchall()
 
+        print(f'Filter by package : {package_filter}')
         self.package_filter = package_filter
         for package in packages:
             if package[1].startswith(package_filter):
                 self.clusters[package[0]] = pydot.Cluster(str(package[0]), bgcolor='#cccccc', label=package[1])
 
         #fetch links
-        c = self.cursor.execute(f'SELECT * FROM class where class_name = "{starting_cls}"')
-        orig_cls = c.fetchone()
-        assert orig_cls, 'origin class not found'
-        orig_cls_id = orig_cls[0]
-        self.__add_graph_tree(orig_cls_id)
+        orig_cls = None
+        if(starting_cls) :
+            c = self.cursor.execute(f'SELECT * FROM class where class_name = "{starting_cls}"')
+            orig_cls = c.fetchone()
+        else:
+            print('NO origin class was specified')
+        
+        #Create links
+        if(orig_cls):
+            print(f'Creating links from {starting_cls}')
+            orig_cls_id = orig_cls[0]
+            self.__add_graph_tree(orig_cls_id)
+        else:
+            print('creating links')
+            c = self.cursor.execute('SELECT * FROM link')
+            links = c.fetchall()
+            self.__add_graph_links(links)
 
     def __fetch_direct_links(self, cls_id) -> set:
         """Get direct links to the giving class"""
@@ -68,7 +84,7 @@ class Graph:
         
         #get the class name
         cls_name = result[1]
-        print(f'Creating class node : {cls_name}')
+        print(f'Creating class node : {cls_name}', end="\r")
 
         if not result:
             return None, -1
@@ -78,7 +94,6 @@ class Graph:
         package_result = c.fetchone()
 
         #Select only the project classes
-        print(package_result)
         if not package_result  or not package_result[0].startswith(self.package_filter) :
             return None, -1
         
@@ -144,22 +159,15 @@ class Graph:
         
         if links : 
 
-            #print(f'[tree] after => {links})')
-            #print(f'[tree] existing => {existing_links})')
             for link in links :
                 if(link[0] not in existing_links) :
-                    print(f'[tree] exist => {link})')
                     existing_links.add(link[0])
                 else :
-                    print(f'[tree] remove => {link})')
                     links.remove(link)
 
-            #print(f'[tree] before => {links})')
-            print(f'[tree] links => {links})')
             self.__add_graph_links(links)        
             for link in links :
                 if(link[2] not in existing_tree) :
-                    print(f'[tree] search deeper => {link[2]})')
                     existing_tree.add(link[2])
                     self.__add_graph_tree(link[2], level + 1, existing_links, existing_tree)
             
@@ -170,7 +178,6 @@ class Graph:
 
             for node in cluster.get_nodes():
                 links_count = self.__get_link_count(node.get_name())
-                print(f'count = {node.get_name()} => {links_count}')
                 if(links_count >= 10):
                     node.set_fillcolor('#a73b00')
 
@@ -185,4 +192,6 @@ class Graph:
             edge.set_penwidth(3)
             self.graph.add_edge(edge)
 
+        print('Creating PNG file...')
         self.graph.write('example1_graph.png',prog='dot', format='png')
+        print('Done')

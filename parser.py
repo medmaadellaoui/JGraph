@@ -17,7 +17,7 @@ class Parser:
     
     def __parse_dir(self, path):
         assert os.path.isdir(path), f'{path} is not a directory'
-        print(f'parsing directory {path}')
+        print(f'parsing directory {path}', end="\r")
         for (dirpath, _, filenames) in os.walk(path):
             for filename in filenames:
                 if(filename.endswith('.java')) : self.parse(dirpath+'/'+filename)
@@ -35,7 +35,7 @@ class Parser:
         head, tail = ntpath.split(file_path)
         filename = tail or ntpath.basename(head)
 
-        print(f'parsing file {filename}')
+        print(f'parsing file {filename}', end="\r")
         with  open(file_path, 'r') as file:
             line = file.readline()
             while line: 
@@ -65,7 +65,7 @@ class Parser:
         return -1
 
     def save_package(self, package_name : str) -> int:
-        print(f'saving package : {package_name}')
+        print(f'saving package : {package_name}', end="\r"),
         success = self.__execute_sql(self.cursor, f'''
             INSERT INTO package (id, package_name, absolute_path)
             VALUES(null, "{package_name}", "")
@@ -84,7 +84,7 @@ class Parser:
         return self.save_link(result.group(2), result.group(1), src_class)
 
     def save_link(self, dst_class, dst_package, src_class) -> int:
-        print(f'saving link : {dst_class} {dst_package} {src_class}')
+        print(f'saving link : {dst_class} {dst_package} {src_class}', end="\r")
         dst_class_id = self.save_class_package(dst_class, dst_package)
         self.__query(self.cursor, f'''
             SELECT id FROM class WHERE class_name="{src_class}"
@@ -102,7 +102,7 @@ class Parser:
         return self.save_class(jclass, package_id)
     
     def save_class(self, jclass, package_id : int) -> int:
-        print(f'saving  class : {jclass} {package_id}')
+        print(f'saving  class : {jclass} {package_id}', end="\r")
         success = self.__execute_sql(self.cursor, f'''
             INSERT INTO class(id, class_name, absolute_path, package_id)
             VALUES(null, "{jclass}", "", "{package_id}")
@@ -142,25 +142,12 @@ class Parser:
             cursor.execute(query)
             return True
         except Exception as e:
-            print(f'Command skipped:  {e} {query}')
+            #print(f'Command skipped:  {e} {query}'),
             return False
 
     def __query(self, cursor, query):
         try:
             return cursor.execute(query)
         except Exception as e:
-            print(f'Command skipped:  {e} {query}')
+            #print(f'Command skipped:  {e} {query}'),
             return None
-
-parser = Parser()
-parser.parse('/media/hamada/DATA1/projects/lab/opensrouce/JGraph/test/Android-CleanArchitecture')
-
-
-'''package Searches;
-
-import java.util.Arrays;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.IntStream;
-
-import static java.lang.String.format;'''
