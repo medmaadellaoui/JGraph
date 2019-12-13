@@ -7,8 +7,8 @@ import ntpath
 
 class Parser:
 
-    def __init__(self):
-        self.init_database()
+    def __init__(self, database_path):
+        self.init_database(database_path)
         self.cursor = self.conn.cursor()
 
     def __del__(self):
@@ -115,10 +115,10 @@ class Parser:
         
         return self.cursor.lastrowid
 
-    def init_database(self):
+    def init_database(self, database_path):
 
         print('creating database...')
-        self.conn = sqlite3.connect('test.db')
+        self.conn = sqlite3.connect(database_path)
         c = self.conn.cursor()
 
         # Open and read the file as a single buffer
