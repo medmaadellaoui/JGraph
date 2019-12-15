@@ -4,6 +4,7 @@ from core.parser import Parser
 from utils import cli_validator as validator
 from cli import cli
 from cli.cli import Command
+from utils.cli_print_utils import bcolors
 
 class Analyze(Command):
 
@@ -30,4 +31,27 @@ class Analyze(Command):
 
         #Parse files in the given path
         parser = Parser(output)
-        parser.parse(path)
+
+        files_count=0
+        dirs_count=0
+        java_files_count=0
+
+
+        def update_progress(type, filename):
+
+            nonlocal files_count
+            nonlocal dirs_count
+            nonlocal java_files_count
+
+            if type == Parser.TYPE_FILE:  
+                files_count = files_count + 1
+            elif type == Parser.TYPE_DIR:
+                dirs_count = dirs_count + 1
+            elif type == Parser.TYPE_FILE_JAVA:
+                java_files_count = java_files_count + 1
+
+            print(f'processed dirs: {bcolors.OKBLUE}{dirs_count}{bcolors.ENDC}, processed files : {bcolors.OKBLUE}{files_count}{bcolors.ENDC}, found java files: {bcolors.OKGREEN}{java_files_count}{bcolors.ENDC}',end='\r')
+        
+        parser.parse(path, update_progress)
+        print()
+    

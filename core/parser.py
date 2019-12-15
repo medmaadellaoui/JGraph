@@ -8,6 +8,10 @@ import config
 
 class Parser:
 
+    TYPE_FILE=0
+    TYPE_DIR=1
+    TYPE_FILE_JAVA=2
+
     def __init__(self, database_path):
         self.init_database(database_path)
         self.cursor = self.conn.cursor()
@@ -16,19 +20,30 @@ class Parser:
         self.cursor.close()
         self.conn.close()
     
-    def __parse_dir(self, path):
+    def __parse_dir(self, path, on_progress=None):
         assert os.path.isdir(path), f'{path} is not a directory'
-        print(f'parsing directory {path}', end="\r")
+
+        current_dir=None
         for (dirpath, _, filenames) in os.walk(path):
             for filename in filenames:
-                if(filename.endswith('.java')) : self.parse(dirpath+'/'+filename)
+
+                if(filename.endswith('.java')): 
+                    self.parse(dirpath+'/'+filename, on_progress)
+
+                #notify progress
+                if on_progress:
+                    if current_dir != dirpath and os.path.isdir(dirpath): 
+                        on_progress(self.TYPE_DIR, path)
+                        current_dir = dirpath
+                    else:
+                        on_progress(self.TYPE_FILE, path)
                 
     
-    def parse(self, file_path):
+    def parse(self, file_path, on_progress=None):
         
         #redirect if directory
         if(os.path.isdir(file_path)):
-            self.__parse_dir(file_path)
+            self.__parse_dir(file_path, on_progress)
             self.conn.commit()
             return
 
@@ -36,13 +51,15 @@ class Parser:
         head, tail = ntpath.split(file_path)
         filename = tail or ntpath.basename(head)
 
-        print(f'parsing file {filename}', end="\r")
         with  open(file_path, 'r') as file:
             line = file.readline()
             while line: 
                 self.save_line(line.rstrip().strip(';'), filename.split('.')[0], filename)
                 line = file.readline()
         self.conn.commit()
+
+        if on_progress:
+            on_progress(self.TYPE_FILE_JAVA, file_path)
 
 
     def save_line(self, line : str, jclass : str, path : str):
@@ -66,7 +83,6 @@ class Parser:
         return -1
 
     def save_package(self, package_name : str) -> int:
-        print(f'saving package : {package_name}', end="\r"),
         success = self.__execute_sql(self.cursor, f'''
             INSERT INTO package (id, package_name, absolute_path)
             VALUES(null, "{package_name}", "")
@@ -85,7 +101,6 @@ class Parser:
         return self.save_link(result.group(2), result.group(1), src_class)
 
     def save_link(self, dst_class, dst_package, src_class) -> int:
-        print(f'saving link : {dst_class} {dst_package} {src_class}', end="\r")
         dst_class_id = self.save_class_package(dst_class, dst_package)
         self.__query(self.cursor, f'''
             SELECT id FROM class WHERE class_name="{src_class}"
@@ -103,7 +118,6 @@ class Parser:
         return self.save_class(jclass, package_id)
     
     def save_class(self, jclass, package_id : int) -> int:
-        print(f'saving  class : {jclass} {package_id}', end="\r")
         success = self.__execute_sql(self.cursor, f'''
             INSERT INTO class(id, class_name, absolute_path, package_id)
             VALUES(null, "{jclass}", "", "{package_id}")
@@ -123,7 +137,6 @@ class Parser:
         c = self.conn.cursor()
 
         # Open and read the file as a single buffer
-        print(config.DBPATH)
         fd = open(config.DBPATH, 'r')
         sqlFile = fd.read()
         fd.close()
