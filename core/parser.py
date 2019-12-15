@@ -4,6 +4,7 @@ import re
 import os
 from os import walk
 import ntpath
+import config
 
 class Parser:
 
@@ -122,7 +123,8 @@ class Parser:
         c = self.conn.cursor()
 
         # Open and read the file as a single buffer
-        fd = open('database.sql', 'r')
+        print(config.DBPATH)
+        fd = open(config.DBPATH, 'r')
         sqlFile = fd.read()
         fd.close()
 

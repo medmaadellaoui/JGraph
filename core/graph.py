@@ -5,6 +5,8 @@ import pydotplus
 import os
 import sqlite3
 import random
+import time
+import uuid
 
 DEFAULT_NODE_LEVEL = -1
 DEFAULT_NODE_COLOR = '#01b28c'
@@ -24,17 +26,31 @@ class Graph:
         splines=True, 
         diredgeconstraints=True,
         levelsgap=3, 
-        mode="hier",
-        ratio="fill",
-        size="8.3,11.7!"
+        mode="hier"
     )
     edges = []
     clusters = dict()
     links_colors = dict()
     package_filter = ''
-    max_levels=DEFAULT_NODE_LEVEL
+    max_levels = DEFAULT_NODE_LEVEL
+    output_path = None
+    format_ = 'png'
 
-    def __init__(self, input_db_path, starting_cls, package_filter='', max_levels=DEFAULT_NODE_LEVEL):
+    def __init__(self, input_db_path, starting_cls=None, package_filter='', max_levels=DEFAULT_NODE_LEVEL, output_path=None, format_='png'):
+
+        
+        #Check output file path
+        if output_path:
+            self.output_path = output_path
+        else:
+            self.output_path = f'out-{str(uuid.uuid1())[:8]}'
+
+        print(self.output_path)
+
+        if format_ :
+            self.format_ = format_
+
+        self.output_path = f'{self.output_path}.{format_}'
 
         #Init database
         self.conn = sqlite3.connect(input_db_path)
@@ -192,6 +208,8 @@ class Graph:
             edge.set_penwidth(3)
             self.graph.add_edge(edge)
 
-        print('Creating PNG file...')
-        self.graph.write('example1_graph.png',prog='dot', format='png')
+        print(f'Creating {self.format_} file...')
+        print(self.output_path)
+        self.graph.write(self.output_path,prog='dot', format=self.format_)
         print('Done')
+        print(f'Saved to {self.output_path}')

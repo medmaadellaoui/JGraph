@@ -4,13 +4,15 @@ from core.graph import Graph
 from cli import cli
 from cli.cli import Command
 from cli.analyze import Analyze
+from cli.create import Create
 from typing import Dict
 
-commands = (
-    Analyze()
-)
+commands = [
+    Analyze(),
+    Create()
+]
 
-cli.setup(commands)
+cli.setup(*commands)
 
 # if command == None:
 #     class_ = cli.get_cli_arg('class')
