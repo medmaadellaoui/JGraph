@@ -7,6 +7,8 @@ import sqlite3
 import random
 import time
 import uuid
+import yaml
+import config
 
 DEFAULT_NODE_LEVEL = -1
 DEFAULT_NODE_COLOR = '#01b28c'
@@ -15,19 +17,7 @@ class Graph:
 
     conn = None
     cursor = None
-    graph = pydot.Dot(
-        graph_type="digraph", 
-        sep='+30,30', 
-        rankdir='TB', 
-        rank='same', 
-        ranksep='4', 
-        nodesep='0',
-        overlap=False, 
-        splines=True, 
-        diredgeconstraints=True,
-        levelsgap=3, 
-        mode="hier"
-    )
+    graph = None
     edges = []
     clusters = dict()
     links_colors = dict()
@@ -36,16 +26,16 @@ class Graph:
     output_path = None
     format_ = 'png'
 
+
     def __init__(self, input_db_path, starting_cls=None, package_filter='', max_levels=DEFAULT_NODE_LEVEL, output_path=None, format_='png'):
 
-        
+        self.__create_dot()
+
         #Check output file path
         if output_path:
             self.output_path = output_path
         else:
             self.output_path = f'out-{str(uuid.uuid1())[:8]}'
-
-        print(self.output_path)
 
         if format_ :
             self.format_ = format_
@@ -59,16 +49,36 @@ class Graph:
         print(f'max levels of deep : {max_levels}')
         self.max_levels = max_levels
 
+        self.package_filter = package_filter
+        self.__create_package_clusters()
+        self.__prepare_graph(starting_cls)
+
+
+    def __create_dot(self):
+        """Create the dot graph object"""
+        with open(os.path.join(config.CONFIG_DIR, 'graphviz.yml'), 'r') as stream:
+            try:
+                graph_config = yaml.safe_load(stream)['graph']
+                self.graph = pydot.Dot(**graph_config)
+            except yaml.YAMLError as exc:
+                print(exc)
+
+
+    def __create_package_clusters(self):
+        """Create clusters to group nodes"""
+        if self.package_filter:
+            print(f'Filter by package : {self.package_filter}')
+        
         #fetch packages
         self.cursor.execute('SELECT * FROM package')
         packages = self.cursor.fetchall()
 
-        print(f'Filter by package : {package_filter}')
-        self.package_filter = package_filter
         for package in packages:
-            if package[1].startswith(package_filter):
+            if package[1].startswith(self.package_filter):
                 self.clusters[package[0]] = pydot.Cluster(str(package[0]), bgcolor='#cccccc', label=package[1])
 
+
+    def __prepare_graph(self, starting_cls):
         #fetch links
         orig_cls = None
         if(starting_cls) :
@@ -88,10 +98,12 @@ class Graph:
             links = c.fetchall()
             self.__add_graph_links(links)
 
+
     def __fetch_direct_links(self, cls_id) -> set:
         """Get direct links to the giving class"""
         c = self.cursor.execute(f'SELECT * FROM link WHERE class_src="{cls_id}"')
         return c.fetchall()
+
 
     def __create_cls_node(self, cls_id : str, color=DEFAULT_NODE_COLOR) -> (pydot.Node, int):
         """Create a graph node for a class"""
@@ -138,6 +150,7 @@ class Graph:
                 if edge not in self.edges:
                     self.edges.append(edge)
 
+
     def __get_link_count(self, cls_id, in_graph=True):
 
         if in_graph:
@@ -152,6 +165,7 @@ class Graph:
         if(count) : return count[0]
         else : return 0
 
+
     def __get_dependencies_count(self, cls_id, in_graph=True):
 
         if in_graph:
@@ -165,6 +179,7 @@ class Graph:
         count = c.fetchone()
         if(count) : return count[0]
         else : return 0
+
 
     def __add_graph_tree(self, cls_id : int, level=0, existing_links=set(), existing_tree=set()) : 
         links = self.__fetch_direct_links(cls_id)
@@ -188,6 +203,7 @@ class Graph:
                     self.__add_graph_tree(link[2], level + 1, existing_links, existing_tree)
             
 
+
     def create_graph(self):
             #add clusters to the global graph
         for _, cluster in self.clusters.items():
@@ -209,7 +225,6 @@ class Graph:
             self.graph.add_edge(edge)
 
         print(f'Creating {self.format_} file...')
-        print(self.output_path)
         self.graph.write(self.output_path,prog='dot', format=self.format_)
         print('Done')
         print(f'Saved to {self.output_path}')

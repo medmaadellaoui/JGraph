@@ -1,0 +1,12 @@
+graph:
+    graph_type: 'digraph'
+    sep: '+30,30' 
+    rankdir: 'TB'
+    rank: 'same' 
+    ranksep: '4'
+    nodesep: '0'
+    overlap: false 
+    splines: true 
+    diredgeconstraints: True
+    levelsgap: 3
+    mode: 'hier'
