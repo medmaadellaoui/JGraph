@@ -9,6 +9,7 @@ import time
 import uuid
 import yaml
 import config
+from utils.cli_print_utils import bcolors
 
 DEFAULT_NODE_LEVEL = -1
 DEFAULT_NODE_COLOR = '#01b28c'
@@ -112,8 +113,7 @@ class Graph:
         
         #get the class name
         cls_name = result[1]
-        print(f'Creating class node : {cls_name}', end="\r")
-
+        
         if not result:
             return None, -1
 
@@ -128,9 +128,13 @@ class Graph:
         return pydot.Node(cls_id, label=cls_name, style="filled", fillcolor=color, group=package_id), package_id
 
 
-    def __add_graph_links(self, links : set) :
+    def __add_graph_links(self, links : set, show_progress=True) :
+        
+        progress = 0;
+        total = len(links)
+        
         for link in links:
-            #if link[2] not in (20, 174, 2, 80) : continue
+
             node_src, cluster_src_id = self.__create_cls_node(link[1])
 
             #Add the source class if it doesn't exist
@@ -149,6 +153,14 @@ class Graph:
                 edge.set_parent_graph(self.graph)
                 if edge not in self.edges:
                     self.edges.append(edge)
+
+            #Track operation progress   
+            if show_progress:
+                progress = progress + 1
+                percent = int(progress/total*100)
+                print(f'creating nodes: [{"#" * int(percent/2)}{" " * (50-int(percent/2))}] {percent}%', end='\r')
+
+        if show_progress: print()
 
 
     def __get_link_count(self, cls_id, in_graph=True):
@@ -184,6 +196,10 @@ class Graph:
     def __add_graph_tree(self, cls_id : int, level=0, existing_links=set(), existing_tree=set()) : 
         links = self.__fetch_direct_links(cls_id)
 
+        if level == 0:
+            print('Creating tree...')
+        print(f'{bcolors.OKGREEN}{len(existing_links)}{bcolors.ENDC} created link', end='\r')
+
         #Check the deep
         if(self.max_levels >= 0 and level >= self.max_levels):
             return
@@ -196,7 +212,7 @@ class Graph:
                 else :
                     links.remove(link)
 
-            self.__add_graph_links(links)        
+            self.__add_graph_links(links, show_progress=False)        
             for link in links :
                 if(link[2] not in existing_tree) :
                     existing_tree.add(link[2])
